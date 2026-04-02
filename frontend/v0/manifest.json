@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "Context Anchor (ADHD PKG)",
+    "version": "1.0",
+    "description": "Anchors browser activity to a specific task for GraphRAG.",
+    "permissions": [
+        "tabs",
+        "storage",
+        "scripting",
+        "notifications",
+        "alarms"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_popup": "popup.html"
+    }
+}

@@ -112,8 +112,8 @@ async def generate_patterns(rr_client, rr_token: str, task: str,
             "Return JSON with:\n"
             '- "focus_score": 0-100 (percentage of on-task time, weighted by streak length — '
             "longer unbroken focus = higher score)\n"
-            '- "distraction_patterns": array of 2-4 specific observations about when/why '
-            "focus was lost. Be specific about times and sites, not generic advice."
+            '- "distraction_patterns": array of 2-4 plain strings (not objects), each a specific '
+            "observation about when/why focus was lost. Be specific about times and sites, not generic advice."
         )
 
         response = await rr_client.chat(token=rr_token, question=question)
@@ -130,9 +130,20 @@ async def generate_patterns(rr_client, rr_token: str, task: str,
         else:
             return {"focus_score": 0, "distraction_patterns": []}
 
+        # Normalize distraction_patterns — GPT-4o may return strings or dicts
+        raw_patterns = parsed.get("distraction_patterns", [])
+        patterns = []
+        for p in raw_patterns:
+            if isinstance(p, str):
+                patterns.append(p)
+            elif isinstance(p, dict):
+                patterns.append(p.get("observation", str(p)))
+            else:
+                patterns.append(str(p))
+
         return {
             "focus_score": min(100, max(0, int(parsed.get("focus_score", 0)))),
-            "distraction_patterns": parsed.get("distraction_patterns", []),
+            "distraction_patterns": patterns,
         }
 
     except Exception:

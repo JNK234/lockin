@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            width: 320px;
+            padding: 15px;
+            font-family: sans-serif;
+            background-color: #f9f9f9;
+        }
+
+        h3,
+        h4 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .section {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        #startBtn {
+            background: #007bff;
+            color: white;
+        }
+
+        #stopBtn {
+            background: #dc3545;
+            color: white;
+        }
+
+        #askBtn {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-text {
+            font-size: 12px;
+            margin-top: 5px;
+            min-height: 15px;
+        }
+
+        #agentResponse {
+            margin-top: 10px;
+            padding: 10px;
+            background: #eef;
+            border-radius: 4px;
+            font-size: 13px;
+            display: none;
+            color: #333;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="section">
+        <h3>Set Active Task</h3>
+        <input type="text" id="taskInput" placeholder="e.g., Debugging compiler issue...">
+        <button id="startBtn">Start Tracking Context</button>
+        <button id="stopBtn">Stop Tracking</button>
+        <div id="status" class="status-text" style="color: gray;">Status: Idle</div>
+        <div id="ingestResponse" class="status-text" style="color: purple;"></div>
+    </div>
+
+    <div class="section">
+        <h4>Ask RocketRide Agent</h4>
+        <input type="text" id="questionInput" placeholder="e.g., Where was I yesterday?">
+        <button id="askBtn">Retrieve Context</button>
+        <div id="agentResponse"></div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
