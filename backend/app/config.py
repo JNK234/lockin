@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
 
     rocketride_uri: str = "http://localhost:5565"
+    rocketride_apikey: str = ""
+    rocketride_openai_key: str = ""
 
     app_host: str = "0.0.0.0"
     app_port: int = 8000
