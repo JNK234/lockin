@@ -25,3 +25,12 @@ class WebhookResponse(BaseModel):
     session_id: str
     domain: str
     classification: Optional[str] = None
+
+
+class NudgeResponse(BaseModel):
+    nudge: bool
+    message: Optional[str] = None
+    task: Optional[str] = None
+    current_domain: Optional[str] = None
+    off_task_seconds: Optional[int] = None
+    return_to: Optional[str] = None

@@ -3,6 +3,7 @@
 
 import uuid
 import logging
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -135,3 +136,84 @@ def update_site_classification(driver, domain: str, classification: str, task: s
             lambda tx: tx.run(cypher, domain=domain, classification=classification, task=task)
         )
     logger.info(f"Site {domain} classified as {classification} for task '{task}'")
+
+
+def check_nudge(driver, session_id: str) -> dict | None:
+    """Check if the user should be nudged. Returns nudge data or None.
+
+    Looks at the current (active) visit: if it's classified as 'distraction',
+    walks backward through the NEXT chain to sum consecutive distraction time,
+    and finds the last on-task URL to suggest returning to.
+    """
+    cypher = """
+    MATCH (s:Session {id: $session_id, status: 'active'})-[:HAS_TASK]->(t:Task)
+    MATCH (s)-[:CONTAINS]->(current:Visit {active: true})-[:TO_SITE]->(site:Site)
+    WHERE current.classification = 'distraction'
+
+    // Walk backward through NEXT chain to sum consecutive distraction time
+    WITH s, t, current, site
+    OPTIONAL MATCH path = (first:Visit)-[:NEXT*0..20]->(current)
+    WHERE (s)-[:CONTAINS]->(first)
+      AND ALL(v IN nodes(path) WHERE v.classification = 'distraction')
+    WITH s, t, current, site, nodes(path) AS chain
+    ORDER BY size(chain) DESC
+    LIMIT 1
+
+    // Calculate total distraction seconds from the chain
+    WITH s, t, current, site, chain,
+         reduce(total = 0, v IN chain |
+           total + CASE WHEN v.start_time IS NOT NULL
+                        THEN duration.between(v.start_time, datetime()).seconds
+                        ELSE 0 END
+         ) AS raw_seconds
+
+    // Find most recent on-task visit for return_to URL
+    OPTIONAL MATCH (s)-[:CONTAINS]->(ontask:Visit)-[:TO_SITE]->(:Site)
+    WHERE ontask.classification = 'on_task'
+    WITH t, current, site, raw_seconds, ontask
+    ORDER BY ontask.start_time DESC
+    LIMIT 1
+
+    RETURN t.name AS task,
+           site.domain AS current_domain,
+           raw_seconds AS off_task_seconds,
+           ontask.url AS return_to
+    """
+    with driver.session() as session:
+        result = session.execute_read(
+            lambda tx: tx.run(cypher, session_id=session_id).single()
+        )
+        if result is None:
+            return None
+        return {
+            "task": result["task"],
+            "current_domain": result["current_domain"],
+            "off_task_seconds": result["off_task_seconds"] or 0,
+            "return_to": result["return_to"],
+        }
+
+
+def record_nudge(driver, session_id: str, domain: str, message: str):
+    """Log a nudge event in the graph for later reporting."""
+    cypher = """
+    MATCH (s:Session {id: $session_id})
+    CREATE (n:Nudge {
+        id: $nudge_id,
+        domain: $domain,
+        message: $message,
+        timestamp: datetime($timestamp)
+    })
+    CREATE (s)-[:HAS_NUDGE]->(n)
+    """
+    with driver.session() as session:
+        session.execute_write(
+            lambda tx: tx.run(
+                cypher,
+                session_id=session_id,
+                nudge_id=str(uuid.uuid4()),
+                domain=domain,
+                message=message,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+    logger.info(f"Nudge recorded for session {session_id}: {domain}")
