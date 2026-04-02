@@ -169,11 +169,14 @@ def check_nudge(driver, session_id: str) -> dict | None:
     WITH s, t, current, site,
          duration.between(first.start_time, datetime()).seconds AS off_task_seconds
 
-    // Find most recent on-task visit for return_to URL
+    // Find most recent on-task visit for return_to URL (fall back to any non-distraction)
     OPTIONAL MATCH (s)-[:CONTAINS]->(ontask:Visit)
-    WHERE ontask.classification = 'on_task'
+    WHERE ontask.classification IN ['on_task', 'ambiguous', 'pending']
+      AND ontask.id <> current.id
     WITH t, site, off_task_seconds, ontask
-    ORDER BY ontask.start_time DESC
+    ORDER BY
+      CASE ontask.classification WHEN 'on_task' THEN 0 ELSE 1 END,
+      ontask.start_time DESC
     LIMIT 1
 
     RETURN t.name AS task,

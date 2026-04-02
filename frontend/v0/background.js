@@ -65,7 +65,7 @@ function checkNudge() {
                     chrome.notifications.create(`nudge-${Date.now()}`, {
                         type: "basic",
                         iconUrl: "icon48.png",
-                        title: "Lockin — Stay Focused!",
+                        title: "LockIn — Stay Focused!",
                         message: data.message,
                         buttons: [{ title: "Go Back" }],
                         priority: 2

@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Context Anchor (ADHD PKG)",
+    "name": "LockIn",
     "version": "1.0",
-    "description": "Anchors browser activity to a specific task for GraphRAG.",
+    "description": "Stay focused. LockIn tracks your browsing, nudges you when distracted, and shows a focus report.",
     "permissions": [
         "tabs",
         "storage",

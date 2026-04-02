@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
-    "description": "Anchors browser activity to a specific task for GraphRAG.",
-    "name": "Context Anchor",
+    "description": "Stay focused. LockIn tracks your browsing, nudges you when distracted, and shows a focus report.",
+    "name": "LockIn",
     "version": "1.0",
     "permissions": [
         "tabs",

@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
         neo4j_driver.close()
 
 
-app = FastAPI(title="Lockin", description="Browser focus tracker API", lifespan=lifespan)
+app = FastAPI(title="LockIn", description="Stay focused. Track browsing, get nudges, see focus reports.", lifespan=lifespan)
 
 # CORS — allow Chrome extension requests
 app.add_middleware(

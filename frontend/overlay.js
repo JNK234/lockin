@@ -2,11 +2,11 @@
 // ABOUTME: Injected on all pages via manifest content_scripts.
 
 function showAgentResponseOnPage(aiText, returnTo) {
-    const existingOverlay = document.getElementById('rocketride-ai-overlay');
+    const existingOverlay = document.getElementById('lockin-overlay');
     if (existingOverlay) { existingOverlay.remove(); }
 
     const overlay = document.createElement('div');
-    overlay.id = 'rocketride-ai-overlay';
+    overlay.id = 'lockin-overlay';
     Object.assign(overlay.style, {
         position: 'fixed', bottom: '20px', right: '20px', width: '350px',
         backgroundColor: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '8px',
@@ -20,7 +20,7 @@ function showAgentResponseOnPage(aiText, returnTo) {
         fontWeight: 'bold', fontSize: '14px', display: 'flex',
         justifyContent: 'space-between', alignItems: 'center'
     });
-    header.innerText = 'Lockin — Stay Focused!';
+    header.innerText = 'LockIn — Stay Focused!';
 
     const closeBtn = document.createElement('button');
     closeBtn.innerText = '✕';
@@ -28,7 +28,10 @@ function showAgentResponseOnPage(aiText, returnTo) {
         background: 'none', border: 'none', color: 'white',
         cursor: 'pointer', fontSize: '16px'
     });
-    closeBtn.onclick = () => overlay.remove();
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('lockin-overlay')?.remove();
+    });
     header.appendChild(closeBtn);
 
     const content = document.createElement('div');
@@ -41,20 +44,27 @@ function showAgentResponseOnPage(aiText, returnTo) {
     overlay.appendChild(header);
     overlay.appendChild(content);
 
-    // Add "Go Back" button if return_to URL is provided
+    // Add action button
+    const actionBtn = document.createElement('button');
     if (returnTo) {
-        const goBackBtn = document.createElement('button');
-        goBackBtn.innerText = 'Go Back to Task';
-        Object.assign(goBackBtn.style, {
-            margin: '0 15px 15px', padding: '10px', backgroundColor: '#28a745',
-            color: 'white', border: 'none', borderRadius: '4px',
-            cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
+        actionBtn.innerText = 'Go Back to Task';
+        actionBtn.style.backgroundColor = '#28a745';
+        actionBtn.onclick = () => { window.location.href = returnTo; };
+    } else {
+        actionBtn.innerText = 'Got it, refocusing!';
+        actionBtn.style.backgroundColor = '#007bff';
+        actionBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            document.getElementById('lockin-overlay')?.remove();
         });
-        goBackBtn.onclick = () => {
-            window.location.href = returnTo;
-        };
-        overlay.appendChild(goBackBtn);
     }
+    Object.assign(actionBtn.style, {
+        margin: '0 15px 15px', padding: '10px',
+        color: 'white', border: 'none', borderRadius: '4px',
+        cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
+    });
+    overlay.appendChild(actionBtn);
 
     document.body.appendChild(overlay);
 }
