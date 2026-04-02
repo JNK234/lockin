@@ -1,5 +1,5 @@
-# ABOUTME: Pydantic request/response models for the webhook event ingestion endpoint.
-# ABOUTME: Defines the shape of Chrome extension events and API responses.
+# ABOUTME: Pydantic request/response models for all API endpoints.
+# ABOUTME: Covers webhook events, nudge checks, session management, and focus reports.
 
 from typing import Optional
 
@@ -34,3 +34,38 @@ class NudgeResponse(BaseModel):
     current_domain: Optional[str] = None
     off_task_seconds: Optional[int] = None
     return_to: Optional[str] = None
+
+
+class SessionEndResponse(BaseModel):
+    status: str
+    session_id: str
+
+
+class SiteSummary(BaseModel):
+    domain: str
+    total_minutes: float
+    visit_count: int
+
+
+class TimelineEntry(BaseModel):
+    time: str
+    domain: str
+    classification: str
+    duration_min: float
+
+
+class ReportResponse(BaseModel):
+    session_id: str
+    task: str
+    duration_minutes: float
+    focus_score: int
+    on_task_percentage: float
+    distraction_percentage: float
+    ambiguous_percentage: float
+    longest_focus_streak_minutes: float
+    total_site_switches: int
+    nudge_count: int
+    top_distractions: list[SiteSummary]
+    on_task_sites: list[SiteSummary]
+    distraction_patterns: list[str]
+    timeline: list[TimelineEntry]

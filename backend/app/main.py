@@ -13,6 +13,7 @@ from app.services.neo4j_service import ensure_constraints
 from app.services.classifier import init_classifier, shutdown_classifier
 from app.routers.webhook import router as webhook_router
 from app.routers.nudge import router as nudge_router
+from app.routers.session import router as session_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -69,6 +70,7 @@ app.add_middleware(
 # Register routers
 app.include_router(webhook_router)
 app.include_router(nudge_router)
+app.include_router(session_router)
 
 
 @app.get("/health")

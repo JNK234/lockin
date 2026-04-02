@@ -233,3 +233,139 @@ def has_recent_nudge(driver, session_id: str, within_seconds: int = 300) -> bool
             lambda tx: tx.run(cypher, session_id=session_id, within_seconds=within_seconds).single()
         )
         return result["recent"] if result else False
+
+
+def end_session(driver, session_id: str) -> dict:
+    """End a session: set status to completed, calculate visit durations.
+
+    Visit durations are computed from the gap between consecutive start_times.
+    The last visit's duration runs from its start_time to session end_time.
+    """
+    cypher = """
+    MATCH (s:Session {id: $session_id, status: 'active'})
+
+    // Set end_time to max(now, latest visit start_time + 1 min) to handle future timestamps
+    WITH s
+    OPTIONAL MATCH (s)-[:CONTAINS]->(last_v:Visit)
+    WITH s, max(last_v.start_time) AS last_visit_time
+    WITH s, CASE WHEN last_visit_time > datetime()
+                 THEN last_visit_time + duration({minutes: 1})
+                 ELSE datetime()
+            END AS end_ts
+    SET s.status = 'completed', s.end_time = end_ts
+
+    // Mark last active visit as inactive
+    WITH s
+    OPTIONAL MATCH (s)-[:CONTAINS]->(v:Visit {active: true})
+    SET v.active = false
+
+    // Calculate durations from NEXT chain
+    WITH s
+    MATCH (s)-[:CONTAINS]->(v:Visit)
+    OPTIONAL MATCH (v)-[:NEXT]->(next_v:Visit)
+    WITH s, v,
+         CASE WHEN next_v IS NOT NULL
+              THEN duration.between(v.start_time, next_v.start_time).seconds
+              ELSE duration.between(v.start_time, s.end_time).seconds
+         END AS dur
+    SET v.duration_seconds = dur
+
+    WITH s
+    MATCH (s)-[:HAS_TASK]->(t:Task)
+    RETURN s.id AS session_id, s.task AS task, s.status AS status
+    """
+    with driver.session() as session:
+        result = session.execute_write(
+            lambda tx: tx.run(cypher, session_id=session_id).single()
+        )
+        if result is None:
+            return None
+        return {
+            "session_id": result["session_id"],
+            "task": result["task"],
+            "status": result["status"],
+        }
+
+
+def get_session_report_data(driver, session_id: str) -> dict | None:
+    """Fetch all raw data needed to build a focus report.
+
+    Returns session metadata, site aggregation, timeline, distraction chains,
+    and nudge count — all from a single set of Cypher queries.
+    """
+    with driver.session() as session:
+        # Session metadata
+        meta = session.execute_read(
+            lambda tx: tx.run("""
+                MATCH (s:Session {id: $session_id})-[:HAS_TASK]->(t:Task)
+                RETURN s.task AS task, s.start_time AS start_time,
+                       s.end_time AS end_time, s.status AS status
+            """, session_id=session_id).single()
+        )
+        if meta is None:
+            return None
+
+        # Site aggregation
+        sites = session.execute_read(
+            lambda tx: tx.run("""
+                MATCH (s:Session {id: $session_id})-[:CONTAINS]->(v:Visit)-[:TO_SITE]->(site:Site)
+                WITH site.domain AS domain, site.classification AS classification,
+                     count(v) AS visit_count,
+                     sum(coalesce(v.duration_seconds, 0)) AS total_seconds
+                RETURN domain, classification, visit_count,
+                       round(total_seconds / 60.0, 1) AS total_minutes
+                ORDER BY total_seconds DESC
+            """, session_id=session_id).values()
+        )
+
+        # Timeline
+        timeline = session.execute_read(
+            lambda tx: tx.run("""
+                MATCH (s:Session {id: $session_id})-[:CONTAINS]->(v:Visit)-[:TO_SITE]->(site:Site)
+                RETURN v.start_time AS time, site.domain AS domain,
+                       v.classification AS classification,
+                       round(coalesce(v.duration_seconds, 0) / 60.0, 1) AS duration_min
+                ORDER BY v.start_time
+            """, session_id=session_id).values()
+        )
+
+        # Distraction chains (on_task → distraction transitions)
+        chains = session.execute_read(
+            lambda tx: tx.run("""
+                MATCH (s:Session {id: $session_id})-[:CONTAINS]->(v1:Visit)-[:NEXT]->(v2:Visit)
+                MATCH (v1)-[:TO_SITE]->(s1:Site), (v2)-[:TO_SITE]->(s2:Site)
+                WHERE v1.classification = 'on_task' AND v2.classification = 'distraction'
+                RETURN s1.domain AS from_site, s2.domain AS to_distraction,
+                       coalesce(v1.duration_seconds, 0) AS focus_seconds_before,
+                       v1.start_time AS drift_time
+                ORDER BY v1.start_time
+            """, session_id=session_id).values()
+        )
+
+        # Nudge count
+        nudge_count = session.execute_read(
+            lambda tx: tx.run("""
+                MATCH (s:Session {id: $session_id})-[:HAS_NUDGE]->(n:Nudge)
+                RETURN count(n) AS cnt
+            """, session_id=session_id).single()
+        )
+
+        return {
+            "task": meta["task"],
+            "start_time": meta["start_time"],
+            "end_time": meta["end_time"],
+            "status": meta["status"],
+            "sites": [
+                {"domain": r[0], "classification": r[1], "visit_count": r[2], "total_minutes": r[3]}
+                for r in sites
+            ],
+            "timeline": [
+                {"time": r[0], "domain": r[1], "classification": r[2], "duration_min": r[3]}
+                for r in timeline
+            ],
+            "chains": [
+                {"from_site": r[0], "to_distraction": r[1], "focus_seconds_before": r[2], "drift_time": r[3]}
+                for r in chains
+            ],
+            "nudge_count": nudge_count["cnt"] if nudge_count else 0,
+        }
