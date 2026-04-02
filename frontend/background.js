@@ -67,14 +67,31 @@ async function saveContext(payload) {
     }
 }
 
-// --- WORKFLOW B: Q&A (placeholder — backend endpoint not implemented yet) ---
+// --- WORKFLOW B: Q&A via RocketRide Agent + Neo4j ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "ASK_AGENT") {
-        // TODO: implement /webhook/ask on backend
-        chrome.runtime.sendMessage({
-            type: "AGENT_ANSWER",
-            answer: "Q&A feature coming soon — backend endpoint not yet implemented."
-        }).catch(() => {});
+        chrome.storage.local.get(['sessionId'], async (result) => {
+            try {
+                const response = await fetch(`${API_BASE}/api/query`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        query: request.query,
+                        session_id: result.sessionId || null
+                    })
+                });
+                const data = await response.json();
+                chrome.runtime.sendMessage({
+                    type: "AGENT_ANSWER",
+                    answer: data.answer || "No answer received."
+                }).catch(() => {});
+            } catch (error) {
+                chrome.runtime.sendMessage({
+                    type: "ERROR",
+                    error: error.toString()
+                }).catch(() => {});
+            }
+        });
     }
 
     if (request.type === "START_SESSION") {

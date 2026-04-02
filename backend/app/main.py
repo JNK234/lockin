@@ -11,9 +11,11 @@ from neo4j import GraphDatabase
 from app.config import settings
 from app.services.neo4j_service import ensure_constraints
 from app.services.classifier import init_classifier, shutdown_classifier
+from app.services.query_service import init_query_agent, shutdown_query_agent
 from app.routers.webhook import router as webhook_router
 from app.routers.nudge import router as nudge_router
 from app.routers.session import router as session_router
+from app.routers.query import router as query_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,10 +51,21 @@ async def lifespan(app: FastAPI):
         app.state.rr_client = None
         app.state.rr_token = None
 
+    # Initialize RocketRide query agent pipeline
+    try:
+        query_client, query_token = await init_query_agent()
+        app.state.query_client = query_client
+        app.state.query_token = query_token
+    except Exception:
+        logger.exception("Query agent init failed — Q&A will be unavailable")
+        app.state.query_client = None
+        app.state.query_token = None
+
     yield
 
     # Cleanup
     await shutdown_classifier(getattr(app.state, "rr_client", None))
+    await shutdown_query_agent(getattr(app.state, "query_client", None))
     if neo4j_driver:
         neo4j_driver.close()
 
@@ -71,6 +84,7 @@ app.add_middleware(
 app.include_router(webhook_router)
 app.include_router(nudge_router)
 app.include_router(session_router)
+app.include_router(query_router)
 
 
 @app.get("/health")

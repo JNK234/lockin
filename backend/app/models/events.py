@@ -69,3 +69,12 @@ class ReportResponse(BaseModel):
     on_task_sites: list[SiteSummary]
     distraction_patterns: list[str]
     timeline: list[TimelineEntry]
+
+
+class QueryRequest(BaseModel):
+    query: str
+    session_id: Optional[str] = None
+
+
+class QueryResponse(BaseModel):
+    answer: str

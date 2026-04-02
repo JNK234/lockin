@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     rocketride_uri: str = "http://localhost:5565"
     rocketride_apikey: str = ""
     rocketride_openai_key: str = ""
+    rocketride_neo4j_uri: str = "bolt://localhost:7687"
+    rocketride_neo4j_password: str = "lockin2026"
 
     app_host: str = "0.0.0.0"
     app_port: int = 8000
