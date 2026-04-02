@@ -1,88 +1,194 @@
 {
-	"components": [
-		{
-			"id": "chat_1",
-			"provider": "chat",
-			"config": { "hideForm": true, "mode": "Source", "parameters": {}, "type": "chat" },
-			"ui": { "position": { "x": 20, "y": 200 }, "measured": { "width": 150, "height": 66 } }
-		},
-		{
-			"id": "agent_rocketride_1",
-			"provider": "agent_rocketride",
-			"config": {
-				"instructions": [
-					"You are Lockin, a focus session analyst. You help users understand their browsing habits during focus sessions.",
-					"Use the Neo4j graph database tool to answer questions about sessions, visits, sites, tasks, and nudges.",
-					"When asked about focus or productivity, query the graph for visit classifications (on_task, distraction, ambiguous) and durations.",
-					"When asked about current activity, look for Sessions with status 'active'.",
-					"When asked about history, look for Sessions with status 'completed'.",
-					"Always give specific, data-driven answers with site names, times, and percentages when available.",
-					"Be encouraging but honest about distractions."
-				],
-				"max_waves": 10,
-				"parameters": {}
-			},
-			"input": [{ "lane": "questions", "from": "chat_1" }],
-			"ui": { "position": { "x": 240, "y": 200 }, "measured": { "width": 150, "height": 86 } }
-		},
-		{
-			"id": "llm_openai_1",
-			"provider": "llm_openai",
-			"config": {
-				"profile": "openai-4o",
-				"openai-4o": { "apikey": "${ROCKETRIDE_OPENAI_KEY}" },
-				"parameters": {}
-			},
-			"control": [{ "classType": "llm", "from": "agent_rocketride_1" }],
-			"ui": { "position": { "x": 170, "y": 360 }, "measured": { "width": 150, "height": 66 } }
-		},
-		{
-			"id": "memory_internal_1",
-			"provider": "memory_internal",
-			"config": { "type": "memory_internal" },
-			"control": [{ "classType": "memory", "from": "agent_rocketride_1" }],
-			"ui": { "position": { "x": 340, "y": 360 }, "measured": { "width": 150, "height": 66 } }
-		},
-		{
-			"id": "db_neo4j_1",
-			"provider": "db_neo4j",
-			"config": {
-				"profile": "default",
-				"default": {
-					"db_description": "Focus session tracker knowledge graph.\n\nNodes:\n- Session {id, task, start_time, end_time, status: 'active' or 'completed'}\n- Task {name, created_at}\n- Visit {id, url, title, start_time, duration_seconds, classification: 'on_task'/'distraction'/'ambiguous'/'pending', active: true/false}\n- Site {domain, classification, classified_by, first_seen}\n- Nudge {id, domain, message, timestamp}\n\nRelationships:\n- (Session)-[:HAS_TASK]->(Task)\n- (Session)-[:CONTAINS]->(Visit)\n- (Visit)-[:TO_SITE]->(Site)\n- (Visit)-[:NEXT]->(Visit) temporal ordering\n- (Site)-[:ON_TASK_FOR]->(Task)\n- (Site)-[:DISTRACTION_FROM]->(Task)\n- (Session)-[:HAS_NUDGE]->(Nudge)\n\nCommon queries: browsing timeline, focus percentages, distraction patterns, session history, time per site, active vs completed sessions.",
-					"uri": "${ROCKETRIDE_NEO4J_URI}",
-					"auth_method": "userpass",
-					"user": "neo4j",
-					"password": "${ROCKETRIDE_NEO4J_PASSWORD}",
-					"database": "neo4j",
-					"max_attempts": 5
-				}
-			},
-			"control": [
-				{ "classType": "tool", "from": "agent_rocketride_1" }
-			],
-			"ui": { "position": { "x": 510, "y": 360 }, "measured": { "width": 150, "height": 66 } }
-		},
-		{
-			"id": "llm_openai_2",
-			"provider": "llm_openai",
-			"config": {
-				"profile": "openai-4o",
-				"openai-4o": { "apikey": "${ROCKETRIDE_OPENAI_KEY}" },
-				"parameters": {}
-			},
-			"control": [{ "classType": "llm", "from": "db_neo4j_1" }],
-			"ui": { "position": { "x": 510, "y": 520 }, "measured": { "width": 150, "height": 66 } }
-		},
-		{
-			"id": "response_answers_1",
-			"provider": "response_answers",
-			"config": {},
-			"input": [{ "lane": "answers", "from": "agent_rocketride_1" }],
-			"ui": { "position": { "x": 460, "y": 200 }, "measured": { "width": 150, "height": 66 } }
-		}
-	],
-	"project_id": "18557b74-8ba5-48c8-8f31-c2f81c0ebb7d",
-	"viewport": { "x": 0, "y": 0, "zoom": 1 },
-	"version": 1
+  "components": [
+    {
+      "id": "chat_1",
+      "provider": "chat",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "chat"
+      },
+      "ui": {
+        "position": {
+          "x": 20,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        }
+      }
+    },
+    {
+      "id": "agent_rocketride_1",
+      "provider": "agent_rocketride",
+      "config": {
+        "instructions": [
+          "You are Lockin, a focus session analyst. You help users understand their browsing habits during focus sessions.",
+          "Use the Neo4j graph database tool to answer questions. ALWAYS join Visit nodes with Site nodes to get domain names. NEVER return raw UUIDs or Visit IDs to the user.",
+          "IMPORTANT: When querying visits, ALWAYS use: MATCH (v:Visit)-[:TO_SITE]->(site:Site) and return site.domain, v.title, v.classification, v.start_time, v.duration_seconds. Never return just v.id.",
+          "When asked about distractions, return the site domain names (e.g. reddit.com, youtube.com), page titles, and how long the user spent there.",
+          "When asked about focus, calculate percentages from visit classifications and durations.",
+          "For active sessions, query Sessions with status 'active'. For history, query status 'completed'.",
+          "Give concise, friendly answers with specific site names, times, and actionable insights. Be encouraging but honest."
+        ],
+        "max_waves": 10,
+        "parameters": {}
+      },
+      "input": [
+        {
+          "lane": "questions",
+          "from": "chat_1"
+        }
+      ],
+      "ui": {
+        "position": {
+          "x": 240,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 86
+        }
+      }
+    },
+    {
+      "id": "llm_openai_1",
+      "provider": "llm_openai",
+      "config": {
+        "profile": "openai-4o",
+        "openai-4o": {
+          "apikey": "${ROCKETRIDE_OPENAI_KEY}"
+        },
+        "parameters": {}
+      },
+      "control": [
+        {
+          "classType": "llm",
+          "from": "agent_rocketride_1"
+        }
+      ],
+      "ui": {
+        "position": {
+          "x": 170,
+          "y": 360
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        }
+      }
+    },
+    {
+      "id": "memory_internal_1",
+      "provider": "memory_internal",
+      "config": {
+        "type": "memory_internal"
+      },
+      "control": [
+        {
+          "classType": "memory",
+          "from": "agent_rocketride_1"
+        }
+      ],
+      "ui": {
+        "position": {
+          "x": 340,
+          "y": 360
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        }
+      }
+    },
+    {
+      "id": "db_neo4j_1",
+      "provider": "db_neo4j",
+      "config": {
+        "profile": "default",
+        "default": {
+          "db_description": "Focus session tracker knowledge graph.\n\nNodes:\n- Session {id, task, start_time, end_time, status: 'active'/'completed'}\n- Task {name, created_at}\n- Visit {id, url, title, start_time, duration_seconds, classification: 'on_task'/'distraction'/'ambiguous'/'pending', active: true/false}\n- Site {domain, classification, classified_by, first_seen} — domain is the human-readable name like 'reddit.com'\n- Nudge {id, domain, message, timestamp}\n\nRelationships:\n- (Session)-[:HAS_TASK]->(Task)\n- (Session)-[:CONTAINS]->(Visit)\n- (Visit)-[:TO_SITE]->(Site) — ALWAYS join to get site.domain\n- (Visit)-[:NEXT]->(Visit) — temporal ordering\n- (Site)-[:ON_TASK_FOR]->(Task)\n- (Site)-[:DISTRACTION_FROM]->(Task)\n- (Session)-[:HAS_NUDGE]->(Nudge)\n\nIMPORTANT: Always return site.domain and v.title, NEVER return v.id. Users want site names not UUIDs.\n\nExample: MATCH (s:Session {status:'active'})-[:CONTAINS]->(v:Visit)-[:TO_SITE]->(site:Site) RETURN site.domain, v.title, v.classification, v.start_time ORDER BY v.start_time",
+          "uri": "${ROCKETRIDE_NEO4J_URI}",
+          "auth_method": "userpass",
+          "user": "neo4j",
+          "password": "${ROCKETRIDE_NEO4J_PASSWORD}",
+          "database": "neo4j",
+          "max_attempts": 5
+        }
+      },
+      "control": [
+        {
+          "classType": "tool",
+          "from": "agent_rocketride_1"
+        }
+      ],
+      "ui": {
+        "position": {
+          "x": 510,
+          "y": 360
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        }
+      }
+    },
+    {
+      "id": "llm_openai_2",
+      "provider": "llm_openai",
+      "config": {
+        "profile": "openai-4o",
+        "openai-4o": {
+          "apikey": "${ROCKETRIDE_OPENAI_KEY}"
+        },
+        "parameters": {}
+      },
+      "control": [
+        {
+          "classType": "llm",
+          "from": "db_neo4j_1"
+        }
+      ],
+      "ui": {
+        "position": {
+          "x": 510,
+          "y": 520
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        }
+      }
+    },
+    {
+      "id": "response_answers_1",
+      "provider": "response_answers",
+      "config": {},
+      "input": [
+        {
+          "lane": "answers",
+          "from": "agent_rocketride_1"
+        }
+      ],
+      "ui": {
+        "position": {
+          "x": 460,
+          "y": 200
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        }
+      }
+    }
+  ],
+  "project_id": "0a3f50d3-2d68-4754-8557-9587c67338f7",
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "version": 1
 }
