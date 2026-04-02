@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "LockIn",
     "version": "1.0",
-    "description": "Stay focused. LockIn tracks your browsing, nudges you when distracted, and shows a focus report.",
+    "description": "Focus. Track. Achieve.",
     "permissions": [
         "tabs",
         "storage",
