@@ -1,75 +1,97 @@
-// ABOUTME: Popup UI logic for the Lockin Chrome extension.
-// ABOUTME: Manages task tracking, session lifecycle, and Q&A interface.
+// ABOUTME: Popup UI logic for the LockIn Chrome extension.
+// ABOUTME: Two-state UI (idle/tracking), timer, session lifecycle.
 
 document.addEventListener('DOMContentLoaded', () => {
+    const idleView = document.getElementById('idleView');
+    const trackingView = document.getElementById('trackingView');
     const taskInput = document.getElementById('taskInput');
     const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const statusDiv = document.getElementById('status');
-    const ingestResponseDiv = document.getElementById('ingestResponse');
-    const questionInput = document.getElementById('questionInput');
-    const askBtn = document.getElementById('askBtn');
-    const agentResponseDiv = document.getElementById('agentResponse');
+    const endBtn = document.getElementById('endBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const taskDisplay = document.getElementById('taskDisplay');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const insightsLink = document.getElementById('insightsLink');
 
-    // Load current state
-    chrome.storage.local.get(['activeTask'], (result) => {
+    let timerInterval = null;
+
+    // Load current state and show correct view
+    chrome.storage.local.get(['activeTask', 'sessionStartTime'], (result) => {
         if (result.activeTask) {
-            taskInput.value = result.activeTask;
-            statusDiv.innerText = `Status: Tracking "${result.activeTask}"`;
-            statusDiv.style.color = "green";
+            showTrackingView(result.activeTask, result.sessionStartTime);
+        } else {
+            showIdleView();
         }
     });
 
+    function showIdleView() {
+        idleView.classList.remove('hidden');
+        trackingView.classList.add('hidden');
+        if (timerInterval) clearInterval(timerInterval);
+    }
+
+    function showTrackingView(task, startTime) {
+        idleView.classList.add('hidden');
+        trackingView.classList.remove('hidden');
+        taskDisplay.textContent = task;
+        startTimer(startTime);
+    }
+
+    function startTimer(startTime) {
+        if (timerInterval) clearInterval(timerInterval);
+        const start = startTime ? new Date(startTime).getTime() : Date.now();
+
+        function updateTimer() {
+            const elapsed = Math.floor((Date.now() - start) / 1000);
+            const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const secs = String(elapsed % 60).padStart(2, '0');
+            timerDisplay.textContent = `${mins}:${secs}`;
+        }
+
+        updateTimer();
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    // Start Task
     startBtn.addEventListener('click', () => {
         const task = taskInput.value.trim();
-        if (task) {
-            chrome.storage.local.set({ activeTask: task }, () => {
-                statusDiv.innerText = `Status: Tracking "${task}"`;
-                statusDiv.style.color = "green";
-                chrome.runtime.sendMessage({ type: "START_SESSION" });
-            });
-        }
+        if (!task) return;
+
+        const startTime = new Date().toISOString();
+        chrome.storage.local.set({ activeTask: task, sessionStartTime: startTime }, () => {
+            chrome.runtime.sendMessage({ type: "START_SESSION" });
+            showTrackingView(task, startTime);
+        });
     });
 
-    stopBtn.addEventListener('click', () => {
-        statusDiv.innerText = "Status: Ending session...";
-        statusDiv.style.color = "orange";
+    // End Session
+    endBtn.addEventListener('click', () => {
+        endBtn.textContent = 'Ending...';
+        endBtn.disabled = true;
 
         chrome.runtime.sendMessage({ type: "END_SESSION" }, (response) => {
+            endBtn.textContent = 'END SESSION';
+            endBtn.disabled = false;
+
             if (response && response.ok) {
                 taskInput.value = '';
-                statusDiv.innerText = "Status: Session ended — report opened";
-                statusDiv.style.color = "gray";
-                ingestResponseDiv.innerText = '';
+                chrome.storage.local.remove(['sessionStartTime']);
+                showIdleView();
             } else {
-                const err = response?.error || "Unknown error";
-                statusDiv.innerText = `Status: ${err}`;
-                statusDiv.style.color = "red";
+                endBtn.textContent = response?.error || 'Error — try again';
+                setTimeout(() => { endBtn.textContent = 'END SESSION'; }, 3000);
             }
         });
     });
 
-    askBtn.addEventListener('click', () => {
-        const question = questionInput.value.trim();
-        if (question) {
-            agentResponseDiv.style.display = 'block';
-            agentResponseDiv.innerText = "Agent is thinking...";
-            chrome.runtime.sendMessage({ action: "ASK_AGENT", query: question });
-        }
-    });
+    // Close popup
+    closeBtn.addEventListener('click', () => window.close());
 
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.type === "INGEST_SUCCESS") {
-            ingestResponseDiv.innerText = message.data;
-            setTimeout(() => { ingestResponseDiv.innerText = ''; }, 4000);
-        }
-        else if (message.type === "AGENT_ANSWER") {
-            agentResponseDiv.style.display = 'block';
-            agentResponseDiv.innerText = message.answer;
-        }
-        else if (message.type === "ERROR") {
-            agentResponseDiv.style.display = 'block';
-            agentResponseDiv.innerText = `Error: ${message.error}`;
-        }
+    // View insights — open report for last session
+    insightsLink.addEventListener('click', () => {
+        chrome.storage.local.get(['sessionId'], (result) => {
+            if (result.sessionId) {
+                chrome.tabs.create({ url: `http://localhost:8000/api/sessions/${result.sessionId}/report` });
+            }
+        });
     });
 });

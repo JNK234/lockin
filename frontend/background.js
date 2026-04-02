@@ -157,14 +157,16 @@ function checkNudge() {
 
             const data = await response.json();
             if (data.nudge) {
-                // Show nudge overlay on the active tab
+                // Show structured nudge overlay on the active tab
                 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                     if (tabs[0] && !tabs[0].url.startsWith("chrome://")) {
                         chrome.tabs.sendMessage(tabs[0].id, {
-                            action: 'SHOW_AI_OVERLAY',
-                            text: `⚡ ${data.message}\n\nYour task: ${data.task}`,
+                            action: 'SHOW_NUDGE',
+                            domain: data.current_domain,
+                            minutes: Math.max(1, Math.ceil((data.off_task_seconds || 0) / 60)),
+                            task: data.task,
                             returnTo: data.return_to
-                        }).catch(() => {}); // overlay.js may not be injected
+                        }).catch(() => {});
                     }
                 });
 

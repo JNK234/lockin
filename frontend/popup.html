@@ -3,96 +3,258 @@
 
 <head>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            width: 320px;
-            padding: 15px;
-            font-family: sans-serif;
-            background-color: #f9f9f9;
+            width: 340px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F5F5F7;
+            color: #1A1A2E;
         }
 
-        h3,
-        h4 {
-            margin-top: 0;
-            color: #333;
+        /* --- Header --- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #E5E7EB;
+            background: #FFFFFF;
+        }
+        .header .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #2DD4A8;
+        }
+        .header .brand-icon {
+            width: 24px;
+            height: 24px;
+            background: #2DD4A8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .header .close-btn {
+            background: none;
+            border: none;
+            color: #6B7280;
+            cursor: pointer;
+            font-size: 18px;
+            width: auto;
+            padding: 0;
+            margin: 0;
         }
 
-        .section {
-            background: white;
-            padding: 10px;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 15px;
+        /* --- Card --- */
+        .card {
+            background: #FFFFFF;
+            margin: 12px;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
         }
 
-        input[type="text"] {
+        /* --- Section Header --- */
+        .section-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        /* --- Form Elements --- */
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1A1A2E;
+        }
+        textarea {
             width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            min-height: 70px;
+            padding: 10px 12px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            color: #1A1A2E;
+            resize: none;
+            outline: none;
         }
+        textarea:focus { border-color: #2DD4A8; }
+        textarea::placeholder { color: #9CA3AF; }
 
+        /* --- Buttons --- */
         button {
             width: 100%;
             padding: 10px;
-            cursor: pointer;
-            margin-bottom: 5px;
             border: none;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-
-        #startBtn {
-            background: #007bff;
-            color: white;
-        }
-
-        #stopBtn {
-            background: #dc3545;
-            color: white;
-        }
-
-        #askBtn {
-            background: #28a745;
-            color: white;
-        }
-
-        .status-text {
-            font-size: 12px;
-            margin-top: 5px;
-            min-height: 15px;
-        }
-
-        #agentResponse {
-            margin-top: 10px;
-            padding: 10px;
-            background: #eef;
-            border-radius: 4px;
+            border-radius: 8px;
+            font-family: inherit;
             font-size: 13px;
-            display: none;
-            color: #333;
-            line-height: 1.4;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s;
         }
+        button:hover { opacity: 0.9; }
+
+        .btn-primary {
+            background: #2DD4A8;
+            color: #FFFFFF;
+        }
+        .btn-danger {
+            background: transparent;
+            color: #DC2626;
+            border: 1.5px solid #DC2626;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- Subtitle --- */
+        .subtitle {
+            font-size: 12px;
+            color: #6B7280;
+            line-height: 1.4;
+            margin-top: 12px;
+        }
+
+        /* --- Footer Link --- */
+        .footer-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #2DD4A8;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .footer-link:hover { text-decoration: underline; }
+
+        /* --- Tracking Status --- */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #22C55E;
+            margin-bottom: 14px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22C55E;
+        }
+
+        /* --- Task Display --- */
+        .task-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            margin-bottom: 4px;
+        }
+        .task-text {
+            font-size: 14px;
+            color: #1A1A2E;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+
+        /* --- Timer --- */
+        .timer-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .timer-icon {
+            font-size: 14px;
+            color: #6B7280;
+        }
+        .timer-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+        }
+        .timer-value {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'SF Mono', 'Menlo', monospace;
+            color: #1A1A2E;
+            letter-spacing: 2px;
+        }
+
+        /* --- Hidden --- */
+        .hidden { display: none; }
     </style>
 </head>
 
 <body>
 
-    <div class="section">
-        <h3>LockIn — Set Active Task</h3>
-        <input type="text" id="taskInput" placeholder="e.g., Debugging compiler issue...">
-        <button id="startBtn">Start Tracking Context</button>
-        <button id="stopBtn">Stop Tracking</button>
-        <div id="status" class="status-text" style="color: gray;">Status: Idle</div>
-        <div id="ingestResponse" class="status-text" style="color: purple;"></div>
+    <!-- Header (always visible) -->
+    <div class="header">
+        <div class="brand">
+            <div class="brand-icon">L</div>
+            LockIn
+        </div>
+        <button class="close-btn" id="closeBtn">&times;</button>
     </div>
 
-    <div class="section">
-        <h4>Ask LockIn</h4>
-        <input type="text" id="questionInput" placeholder="e.g., Where was I yesterday?">
-        <button id="askBtn">Retrieve Context</button>
-        <div id="agentResponse"></div>
+    <!-- IDLE VIEW -->
+    <div id="idleView">
+        <div class="card">
+            <div class="section-header">Provide Your Work Goal</div>
+            <label>What's your work goal today?</label>
+            <textarea id="taskInput" placeholder="Ex: Complete code review for Project X"></textarea>
+            <button class="btn-primary" id="startBtn" style="margin-top: 12px;">Start Task</button>
+            <div class="subtitle">
+                Easily manage your tabs and focus, and get nudged if you drift from your goal.
+            </div>
+        </div>
+        <a class="footer-link" id="insightsLink">
+            View detailed tracking insights &rarr;
+        </a>
+    </div>
+
+    <!-- TRACKING VIEW -->
+    <div id="trackingView" class="hidden">
+        <div class="card">
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                TRACKING
+            </div>
+            <div class="task-label">Task</div>
+            <div class="task-text" id="taskDisplay"></div>
+            <div class="timer-box">
+                <div>
+                    <div class="timer-label">&#9201; Timer</div>
+                    <div class="timer-value" id="timerDisplay">00:00</div>
+                </div>
+            </div>
+            <button class="btn-danger" id="endBtn">End Session</button>
+        </div>
     </div>
 
     <script src="popup.js"></script>
