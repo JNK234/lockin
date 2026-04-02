@@ -153,14 +153,20 @@ def check_nudge(driver, session_id: str) -> dict | None:
     """
     cypher = """
     MATCH (s:Session {id: $session_id, status: 'active'})-[:HAS_TASK]->(t:Task)
-    MATCH (s)-[:CONTAINS]->(current:Visit {active: true})-[:TO_SITE]->(site:Site)
+
+    // Find the most recent visit by start_time (not relying on active flag)
+    MATCH (s)-[:CONTAINS]->(v:Visit)-[:TO_SITE]->(site:Site)
+    WITH s, t, v, site ORDER BY v.start_time DESC LIMIT 1
+
+    // Only nudge if the latest visit is a distraction
+    WITH s, t, v AS current, site
     WHERE current.classification = 'distraction'
 
     // Walk backward to find the earliest visit in the consecutive distraction streak
     WITH s, t, current, site
     OPTIONAL MATCH path = (first:Visit)-[:NEXT*0..20]->(current)
     WHERE (s)-[:CONTAINS]->(first)
-      AND ALL(v IN nodes(path) WHERE v.classification = 'distraction')
+      AND ALL(n IN nodes(path) WHERE n.classification = 'distraction')
     WITH s, t, current, site, first
     ORDER BY first.start_time ASC
     LIMIT 1
@@ -169,9 +175,9 @@ def check_nudge(driver, session_id: str) -> dict | None:
     WITH s, t, current, site,
          duration.between(first.start_time, datetime()).seconds AS off_task_seconds
 
-    // Find most recent on-task visit for return_to URL (fall back to any non-distraction)
-    OPTIONAL MATCH (s)-[:CONTAINS]->(ontask:Visit)
-    WHERE ontask.classification IN ['on_task', 'ambiguous', 'pending']
+    // Find most recent non-distraction visit for return_to URL
+    OPTIONAL MATCH (s)-[:CONTAINS]->(ontask:Visit)-[:TO_SITE]->(:Site)
+    WHERE ontask.classification IN ['on_task', 'ambiguous']
       AND ontask.id <> current.id
     WITH t, site, off_task_seconds, ontask
     ORDER BY
