@@ -126,10 +126,16 @@ def update_site_classification(driver, domain: str, classification: str, task: s
     WITH site
     MATCH (t:Task {name: $task})
     WITH site, t, $classification AS cls
+
+    // Remove contradicting edge before creating new one
     FOREACH (_ IN CASE WHEN cls = 'on_task' THEN [1] ELSE [] END |
         MERGE (site)-[:ON_TASK_FOR]->(t))
     FOREACH (_ IN CASE WHEN cls = 'distraction' THEN [1] ELSE [] END |
         MERGE (site)-[:DISTRACTION_FROM]->(t))
+    WITH site, t, cls
+    OPTIONAL MATCH (site)-[bad_on:ON_TASK_FOR]->(t) WHERE cls = 'distraction'
+    OPTIONAL MATCH (site)-[bad_off:DISTRACTION_FROM]->(t) WHERE cls = 'on_task'
+    DELETE bad_on, bad_off
     """
     with driver.session() as session:
         session.execute_write(
@@ -150,33 +156,29 @@ def check_nudge(driver, session_id: str) -> dict | None:
     MATCH (s)-[:CONTAINS]->(current:Visit {active: true})-[:TO_SITE]->(site:Site)
     WHERE current.classification = 'distraction'
 
-    // Walk backward through NEXT chain to sum consecutive distraction time
+    // Walk backward to find the earliest visit in the consecutive distraction streak
     WITH s, t, current, site
     OPTIONAL MATCH path = (first:Visit)-[:NEXT*0..20]->(current)
     WHERE (s)-[:CONTAINS]->(first)
       AND ALL(v IN nodes(path) WHERE v.classification = 'distraction')
-    WITH s, t, current, site, nodes(path) AS chain
-    ORDER BY size(chain) DESC
+    WITH s, t, current, site, first
+    ORDER BY first.start_time ASC
     LIMIT 1
 
-    // Calculate total distraction seconds from the chain
-    WITH s, t, current, site, chain,
-         reduce(total = 0, v IN chain |
-           total + CASE WHEN v.start_time IS NOT NULL
-                        THEN duration.between(v.start_time, datetime()).seconds
-                        ELSE 0 END
-         ) AS raw_seconds
+    // Distraction time = wall clock from streak start to now
+    WITH s, t, current, site,
+         duration.between(first.start_time, datetime()).seconds AS off_task_seconds
 
     // Find most recent on-task visit for return_to URL
-    OPTIONAL MATCH (s)-[:CONTAINS]->(ontask:Visit)-[:TO_SITE]->(:Site)
+    OPTIONAL MATCH (s)-[:CONTAINS]->(ontask:Visit)
     WHERE ontask.classification = 'on_task'
-    WITH t, current, site, raw_seconds, ontask
+    WITH t, site, off_task_seconds, ontask
     ORDER BY ontask.start_time DESC
     LIMIT 1
 
     RETURN t.name AS task,
            site.domain AS current_domain,
-           raw_seconds AS off_task_seconds,
+           off_task_seconds,
            ontask.url AS return_to
     """
     with driver.session() as session:
@@ -217,3 +219,17 @@ def record_nudge(driver, session_id: str, domain: str, message: str):
             )
         )
     logger.info(f"Nudge recorded for session {session_id}: {domain}")
+
+
+def has_recent_nudge(driver, session_id: str, within_seconds: int = 300) -> bool:
+    """Check if a nudge was already recorded recently (default: last 5 min)."""
+    cypher = """
+    MATCH (s:Session {id: $session_id})-[:HAS_NUDGE]->(n:Nudge)
+    WHERE duration.between(n.timestamp, datetime()).seconds < $within_seconds
+    RETURN count(n) > 0 AS recent
+    """
+    with driver.session() as session:
+        result = session.execute_read(
+            lambda tx: tx.run(cypher, session_id=session_id, within_seconds=within_seconds).single()
+        )
+        return result["recent"] if result else False

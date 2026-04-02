@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Request
 
 from app.models.events import NudgeResponse
-from app.services.neo4j_service import check_nudge, record_nudge
+from app.services.neo4j_service import check_nudge, record_nudge, has_recent_nudge
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +34,10 @@ async def get_nudge(session_id: str, request: Request):
     minutes = max(1, seconds // 60)
     message = f"You've been on {domain} for {minutes} minute{'s' if minutes != 1 else ''} — get back to your task!"
 
-    # Log the nudge in Neo4j
-    await asyncio.to_thread(record_nudge, driver, session_id, domain, message)
+    # Log the nudge in Neo4j (dedup: skip if nudged recently)
+    already_nudged = await asyncio.to_thread(has_recent_nudge, driver, session_id)
+    if not already_nudged:
+        await asyncio.to_thread(record_nudge, driver, session_id, domain, message)
 
     return NudgeResponse(
         nudge=True,
