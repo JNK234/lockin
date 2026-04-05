@@ -4,6 +4,13 @@
 
 LockIn is a browser extension that helps you stay focused during work sessions. It passively tracks your browsing, uses AI to classify each page visit as on-task or distraction, nudges you when you drift, and generates a detailed focus report when your session ends.
 
+## Screenshots
+
+### Focus Report Dashboard
+![Report Dashboard](docs/images/report-dashboard.png)
+
+*Focus score ring, metrics cards, color-coded session timeline, site breakdown, and AI-generated insights*
+
 ## Architecture
 
 ```
