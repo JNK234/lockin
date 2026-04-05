@@ -120,7 +120,7 @@ async def generate_patterns(rr_client, rr_token: str, task: str,
         answers = response.get("answers", [])
         if not answers:
             logger.warning("No answer from report pipeline")
-            return {"focus_score": 0, "distraction_patterns": []}
+            return {"focus_score": None, "distraction_patterns": []}
 
         answer = answers[0]
         if isinstance(answer, str):
@@ -128,7 +128,7 @@ async def generate_patterns(rr_client, rr_token: str, task: str,
         elif isinstance(answer, dict):
             parsed = answer
         else:
-            return {"focus_score": 0, "distraction_patterns": []}
+            return {"focus_score": None, "distraction_patterns": []}
 
         # Normalize distraction_patterns — GPT-4o may return strings or dicts
         raw_patterns = parsed.get("distraction_patterns", [])
@@ -148,4 +148,4 @@ async def generate_patterns(rr_client, rr_token: str, task: str,
 
     except Exception:
         logger.exception("Pattern analysis failed")
-        return {"focus_score": 0, "distraction_patterns": ["Pattern analysis unavailable"]}
+        return {"focus_score": None, "distraction_patterns": []}

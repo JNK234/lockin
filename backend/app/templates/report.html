@@ -1,0 +1,520 @@
+<!-- ABOUTME: Jinja2 template for the LockIn focus session report dashboard. -->
+<!-- ABOUTME: Renders focus score, metrics, timeline, sites, and AI insights. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Report — {{ report.task }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F5F5F7;
+            color: #1A1A2E;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+
+        /* --- Header --- */
+        .report-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+        .report-header .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: #2DD4A8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .brand-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2DD4A8;
+        }
+        .report-date {
+            font-size: 13px;
+            color: #6B7280;
+        }
+
+        /* --- Session Info --- */
+        .session-info {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .session-task {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .session-meta {
+            display: flex;
+            gap: 24px;
+            font-size: 14px;
+            color: #6B7280;
+        }
+        .session-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* --- Score + Metrics Row --- */
+        .score-metrics {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* Score Ring */
+        .score-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .score-ring {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .score-ring-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1A1A2E;
+        }
+        .score-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+        }
+        .score-unavailable {
+            font-size: 14px;
+            color: #9CA3AF;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .metric-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .metric-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6B7280;
+            margin-bottom: 6px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .metric-value.green { color: #2DD4A8; }
+        .metric-value.red { color: #EF4444; }
+        .metric-value.yellow { color: #F59E0B; }
+        .metric-value.neutral { color: #1A1A2E; }
+
+        /* --- Timeline --- */
+        .section-card {
+            background: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #1A1A2E;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .timeline-bar {
+            display: flex;
+            height: 40px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .timeline-segment {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 4px;
+            cursor: pointer;
+            transition: opacity 0.15s;
+            border-right: 1px solid rgba(255,255,255,0.3);
+        }
+        .timeline-segment:last-child { border-right: none; }
+        .timeline-segment:hover { opacity: 0.85; }
+        .timeline-segment .seg-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 6px;
+        }
+        .timeline-segment.on_task { background: #2DD4A8; }
+        .timeline-segment.distraction { background: #EF4444; }
+        .timeline-segment.ambiguous { background: #F59E0B; }
+        .timeline-segment.pending { background: #9CA3AF; }
+
+        /* Timeline tooltip */
+        .timeline-segment .tooltip {
+            display: none;
+            position: absolute;
+            bottom: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1A1A2E;
+            color: #FFFFFF;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        .timeline-segment:hover .tooltip { display: block; }
+
+        /* Timeline legend */
+        .timeline-legend {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #6B7280;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        /* --- Sites Columns --- */
+        .sites-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .site-list-header {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .site-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #F3F4F6;
+        }
+        .site-row:last-child { border-bottom: none; }
+        .site-domain {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .site-stats {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #6B7280;
+        }
+        .site-bar-wrap {
+            width: 100%;
+            margin-top: 4px;
+        }
+        .site-bar {
+            height: 4px;
+            border-radius: 2px;
+        }
+        .site-bar.green { background: #2DD4A8; }
+        .site-bar.red { background: #EF4444; }
+
+        /* --- AI Insights --- */
+        .insight-list {
+            list-style: none;
+            padding: 0;
+        }
+        .insight-list li {
+            position: relative;
+            padding: 10px 0 10px 20px;
+            font-size: 14px;
+            color: #374151;
+            border-bottom: 1px solid #F3F4F6;
+        }
+        .insight-list li:last-child { border-bottom: none; }
+        .insight-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 16px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2DD4A8;
+        }
+        .no-data {
+            font-size: 14px;
+            color: #9CA3AF;
+            font-style: italic;
+        }
+
+        /* --- Footer --- */
+        .report-footer {
+            text-align: center;
+            padding: 24px 0;
+            font-size: 12px;
+            color: #9CA3AF;
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 700px) {
+            .score-metrics {
+                grid-template-columns: 1fr;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .sites-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- Header -->
+        <div class="report-header">
+            <div class="brand">
+                <div class="brand-icon">L</div>
+                <span class="brand-text">LockIn</span>
+            </div>
+            <span class="report-date">Focus Report</span>
+        </div>
+
+        <!-- Session Info -->
+        <div class="session-info">
+            <div class="session-task">{{ report.task }}</div>
+            <div class="session-meta">
+                {% set hours = (report.duration_minutes // 60) | int %}
+                {% set mins = (report.duration_minutes % 60) | round(0) | int %}
+                <span>&#9201; {% if hours > 0 %}{{ hours }}h {% endif %}{{ mins }}m</span>
+                <span>&#128279; {{ report.timeline | length }} sites visited</span>
+                {% if report.timeline %}
+                <span>&#128197; Started at {{ report.timeline[0].time }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Score + Metrics -->
+        <div class="score-metrics">
+            <div class="score-card">
+                {% if report.focus_score is none %}
+                <div class="score-unavailable">Score<br>unavailable</div>
+                {% else %}
+                {% set score = report.focus_score %}
+                {% set deg = (score / 100 * 360) | round(0) | int %}
+                {% if score >= 70 %}
+                    {% set ring_color = '#2DD4A8' %}
+                {% elif score >= 40 %}
+                    {% set ring_color = '#F59E0B' %}
+                {% else %}
+                    {% set ring_color = '#EF4444' %}
+                {% endif %}
+                <div class="score-ring" style="background: conic-gradient({{ ring_color }} {{ deg }}deg, #E5E7EB {{ deg }}deg);">
+                    <div style="width: 88px; height: 88px; border-radius: 50%; background: #FFFFFF; display: flex; align-items: center; justify-content: center;">
+                        <span class="score-ring-value">{{ score }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="score-label">Focus Score</div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">On-Task</div>
+                    <div class="metric-value green">{{ report.on_task_percentage }}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Distraction</div>
+                    <div class="metric-value red">{{ report.distraction_percentage }}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Ambiguous</div>
+                    <div class="metric-value yellow">{{ report.ambiguous_percentage }}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Longest Streak</div>
+                    <div class="metric-value neutral">{{ report.longest_focus_streak_minutes }}m</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Site Switches</div>
+                    <div class="metric-value neutral">{{ report.total_site_switches }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Nudges</div>
+                    <div class="metric-value neutral">{{ report.nudge_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="section-card">
+            <div class="section-title">Session Timeline</div>
+            {% if report.timeline %}
+            {% set total_dur = report.timeline | sum(attribute='duration_min') %}
+            <div class="timeline-bar">
+                {% for entry in report.timeline %}
+                {% set pct = (entry.duration_min / total_dur * 100) if total_dur > 0 else 0 %}
+                <div class="timeline-segment {{ entry.classification }}" style="width: {{ pct }}%;">
+                    <div class="tooltip">{{ entry.domain }} — {{ entry.time }} ({{ entry.duration_min }}m)</div>
+                    {% if pct > 8 %}
+                    <span class="seg-label">{{ entry.domain }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <div class="timeline-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#2DD4A8"></div> On-Task</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#EF4444"></div> Distraction</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#F59E0B"></div> Ambiguous</div>
+            </div>
+            {% else %}
+            <div class="no-data">No timeline data available</div>
+            {% endif %}
+        </div>
+
+        <!-- Sites -->
+        <div class="sites-grid">
+            <div class="section-card">
+                <div class="site-list-header" style="color: #2DD4A8;">On-Task Sites</div>
+                {% if report.on_task_sites %}
+                {% set max_on = report.on_task_sites | map(attribute='total_minutes') | max or 1 %}
+                {% for site in report.on_task_sites %}
+                <div class="site-row">
+                    <div>
+                        <div class="site-domain">{{ site.domain }}</div>
+                        <div class="site-bar-wrap">
+                            <div class="site-bar green" style="width: {{ (site.total_minutes / max_on * 100) | round(0) }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="site-stats">
+                        <span>{{ site.total_minutes | round(1) }}m</span>
+                        <span>{{ site.visit_count }}x</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="no-data">No on-task sites recorded</div>
+                {% endif %}
+            </div>
+
+            <div class="section-card">
+                <div class="site-list-header" style="color: #EF4444;">Top Distractions</div>
+                {% if report.top_distractions %}
+                {% set max_dist = report.top_distractions | map(attribute='total_minutes') | max or 1 %}
+                {% for site in report.top_distractions %}
+                <div class="site-row">
+                    <div>
+                        <div class="site-domain">{{ site.domain }}</div>
+                        <div class="site-bar-wrap">
+                            <div class="site-bar red" style="width: {{ (site.total_minutes / max_dist * 100) | round(0) }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="site-stats">
+                        <span>{{ site.total_minutes | round(1) }}m</span>
+                        <span>{{ site.visit_count }}x</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="no-data">No distractions recorded</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="section-card">
+            <div class="section-title">AI Analysis</div>
+            {% if report.distraction_patterns and report.distraction_patterns | length > 0 %}
+            <ul class="insight-list">
+                {% for pattern in report.distraction_patterns %}
+                <li>{{ pattern }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="no-data">No patterns detected for this session</div>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <div class="report-footer">
+            LockIn — Focus. Track. Achieve.
+        </div>
+
+    </div>
+</body>
+</html>

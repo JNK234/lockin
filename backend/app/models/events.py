@@ -58,7 +58,7 @@ class ReportResponse(BaseModel):
     session_id: str
     task: str
     duration_minutes: float
-    focus_score: int
+    focus_score: int | None = None
     on_task_percentage: float
     distraction_percentage: float
     ambiguous_percentage: float

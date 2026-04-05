@@ -54,7 +54,7 @@ async def get_report(session_id: str, request: Request):
     metrics = compute_metrics(report_data)
 
     # Step 3: Pattern analysis via GPT-4o
-    patterns = {"focus_score": 0, "distraction_patterns": []}
+    patterns = {"focus_score": None, "distraction_patterns": []}
     if rr_client and rr_token:
         patterns = await generate_patterns(
             rr_client, rr_token,
