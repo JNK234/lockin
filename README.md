@@ -80,11 +80,12 @@ ROCKETRIDE_OPENAI_KEY=your-openai-key
 ### 3. Install & Run Backend
 
 ```bash
+cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Backend runs on `http://localhost:8000`. Check health: `http://localhost:8000/health`
+Backend runs on `http://localhost:8000`. Verify with: `curl http://localhost:8000/health`
 
 ### 4. Load Extension
 
@@ -95,9 +96,16 @@ Backend runs on `http://localhost:8000`. Check health: `http://localhost:8000/he
 
 ### 5. (Optional) Load Demo Data
 
-Open the Neo4j Browser at `http://localhost:7474`, connect with `neo4j`/`lockin2026`, and paste the contents of `backend/seed/mock_data.cypher`.
+Load the sample focus session to see the report dashboard without running a real session:
 
-Then visit `http://localhost:8000/report/demo-session-001` to see a sample report.
+```bash
+# From the project root
+docker exec -i lockin-neo4j cypher-shell -u neo4j -p lockin2026 < backend/seed/mock_data.cypher
+```
+
+Or open the Neo4j Browser at `http://localhost:7474`, log in with `neo4j`/`lockin2026`, and paste the contents of `backend/seed/mock_data.cypher`.
+
+Then visit **http://localhost:8000/report/demo-session-001** to see the sample report dashboard.
 
 ## Usage
 
@@ -169,6 +177,25 @@ lockin/
 | GET | `/report/{id}` | Focus report dashboard (HTML) |
 | POST | `/api/query` | Ask a question about sessions |
 | GET | `/health` | Service health check |
+
+## Quick Demo (TL;DR)
+
+```bash
+# 1. Start everything
+docker-compose up -d
+cd backend && cp .env.example .env  # edit with your API keys
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
+
+# 2. Load demo data
+docker exec -i lockin-neo4j cypher-shell -u neo4j -p lockin2026 < seed/mock_data.cypher
+
+# 3. View demo report
+open http://localhost:8000/report/demo-session-001
+
+# 4. Load extension: chrome://extensions → Developer Mode → Load Unpacked → select frontend/
+# 5. Click LockIn icon → enter a task → Start Task → browse → End Session → see your report
+```
 
 ## License
 
