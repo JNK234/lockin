@@ -4,8 +4,11 @@
 import logging
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
 from neo4j import GraphDatabase
 
 from app.config import settings
@@ -16,6 +19,7 @@ from app.routers.webhook import router as webhook_router
 from app.routers.nudge import router as nudge_router
 from app.routers.session import router as session_router
 from app.routers.query import router as query_router
+from app.routers.report import router as report_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -72,6 +76,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LockIn", description="Focus. Track. Achieve.", lifespan=lifespan)
 
+# Jinja2 templates for HTML report rendering
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+app.state.templates = templates
+
 # CORS — allow Chrome extension requests
 app.add_middleware(
     CORSMiddleware,
@@ -85,6 +93,7 @@ app.include_router(webhook_router)
 app.include_router(nudge_router)
 app.include_router(session_router)
 app.include_router(query_router)
+app.include_router(report_router)
 
 
 @app.get("/health")

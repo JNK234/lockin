@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const taskDisplay = document.getElementById('taskDisplay');
     const timerDisplay = document.getElementById('timerDisplay');
     const insightsLink = document.getElementById('insightsLink');
+    const settingsBtn = document.getElementById('settingsBtn');
 
     let timerInterval = null;
 
@@ -86,11 +87,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close popup
     closeBtn.addEventListener('click', () => window.close());
 
+    // Settings
+    settingsBtn.addEventListener('click', () => chrome.runtime.openOptionsPage());
+
     // View insights — open report for last session
     insightsLink.addEventListener('click', () => {
-        chrome.storage.local.get(['sessionId'], (result) => {
-            if (result.sessionId) {
-                chrome.tabs.create({ url: `http://localhost:8000/api/sessions/${result.sessionId}/report` });
+        chrome.storage.local.get(['sessionId', 'lastCompletedSessionId'], (result) => {
+            const id = result.sessionId || result.lastCompletedSessionId;
+            if (id) {
+                getApiBase().then((base) => {
+                    chrome.tabs.create({ url: `${base}/report/${id}` });
+                });
             }
         });
     });

@@ -1,7 +1,7 @@
 // ABOUTME: Chrome extension background service worker for Lockin focus tracker.
 // ABOUTME: Handles event ingestion, nudge polling, session lifecycle, and Q&A queries.
 
-const API_BASE = "http://localhost:8000";
+importScripts('config.js');
 
 // --- WORKFLOW A: BACKGROUND TRACKING ---
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -37,6 +37,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 async function saveContext(payload) {
     try {
+        const API_BASE = await getApiBase();
         const response = await fetch(`${API_BASE}/webhook/save`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -72,6 +73,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "ASK_AGENT") {
         chrome.storage.local.get(['sessionId'], async (result) => {
             try {
+                const API_BASE = await getApiBase();
                 const response = await fetch(`${API_BASE}/api/query`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -95,8 +97,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.type === "START_SESSION") {
-        chrome.alarms.create("nudgeCheck", { periodInMinutes: 1 });
-        console.log("Session started, nudge polling active");
+        getNudgeInterval().then((interval) => {
+            chrome.alarms.create("nudgeCheck", { periodInMinutes: interval });
+            console.log("Session started, nudge polling every", interval, "min");
+        });
         sendResponse({ ok: true });
     }
 
@@ -111,6 +115,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
 
             try {
+                const API_BASE = await getApiBase();
                 const endResp = await fetch(`${API_BASE}/api/sessions/${result.sessionId}/end`, { method: "POST" });
                 if (!endResp.ok) {
                     const detail = await endResp.text();
@@ -119,10 +124,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     return;
                 }
 
-                // Open report in new tab
-                chrome.tabs.create({ url: `${API_BASE}/api/sessions/${result.sessionId}/report` });
+                // Open report in new tab (HTML dashboard)
+                chrome.tabs.create({ url: `${API_BASE}/report/${result.sessionId}` });
 
-                // Clear state
+                // Preserve for "View insights" link, then clear active state
+                chrome.storage.local.set({ lastCompletedSessionId: result.sessionId });
                 chrome.storage.local.remove(['sessionId', 'activeTask', 'returnTo']);
                 console.log("Session ended, report opened");
                 sendResponse({ ok: true });
@@ -149,6 +155,7 @@ function checkNudge() {
         if (!result.sessionId || !result.activeTask) return;
 
         try {
+            const API_BASE = await getApiBase();
             const response = await fetch(`${API_BASE}/api/sessions/${result.sessionId}/nudge`);
             if (!response.ok) {
                 console.error("Nudge check failed:", response.status);
